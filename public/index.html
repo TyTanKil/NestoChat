@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat NestJS</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-top: 30px;
+      color: #333;
+    }
+
+    #username-form, #chat {
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-top: 20px;
+      width: 90%;
+      max-width: 500px;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: calc(100% - 24px);
+    }
+
+    button {
+      background-color: #0077cc;
+      color: white;
+      padding: 10px 16px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+      border-top: 1px solid #eee;
+    }
+
+    ul li {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    #display-username {
+      font-weight: bold;
+      color: #0077cc;
+    }
+  </style>
+</head>
+<body>
+  <h1>💬 Chat NestJS</h1>
+
+  <div id="username-form">
+    <input id="username" type="text" placeholder="Entrez votre pseudo" />
+    <button onclick="saveUsername()">Valider</button>
+  </div>
+
+  <div id="chat" style="display: none;">
+    <p>Connecté en tant que : <span id="display-username"></span></p>
+    <input id="message" type="text" placeholder="Votre message" />
+    <button onclick="sendMessage()">Envoyer</button>
+    <ul id="messages"></ul>
+    <button onclick="resetUsername()">Changer de pseudo</button>
+  </div>
+
+  <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+
+    socket.on('connect', () => {
+      console.log('Connecté au serveur WebSocket');
+    });
+
+    socket.on('message', ({ sender, message }) => {
+      const li = document.createElement('li');
+      li.textContent = `${sender}: ${message}`;
+      document.getElementById('messages').appendChild(li);
+    });
+
+    function saveUsername() {
+      const usernameInput = document.getElementById('username').value.trim();
+      if (usernameInput) {
+        sessionStorage.setItem('username', usernameInput);
+        showChat();
+      }
+    }
+
+    function resetUsername() {
+      sessionStorage.removeItem('username');
+      location.reload();
+    }
+
+    function showChat() {
+      const username = sessionStorage.getItem('username');
+      if (!username) return;
+      document.getElementById('username-form').style.display = 'none';
+      document.getElementById('chat').style.display = 'block';
+      document.getElementById('display-username').textContent = username;
+    }
+
+    function sendMessage() {
+      const sender = sessionStorage.getItem('username');
+      const message = document.getElementById('message').value.trim();
+      if (message && sender) {
+        socket.emit('message', { sender, message });
+        document.getElementById('message').value = '';
+      }
+    }
+
+    window.onload = () => {
+      if (sessionStorage.getItem('username')) {
+        showChat();
+      }
+    };
+  </script>
+</body>
+</html>
