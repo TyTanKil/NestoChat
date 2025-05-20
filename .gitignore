@@ -1,0 +1,41 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Logs
+logs
+*.log
+*.log.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Build
+dist/
+build/
+coverage/
+
+# Vue CLI / Vite
+chat-vue/node_modules/
+chat-vue/dist/
+chat-vue/.env.local
+chat-vue/.env.*.local
+chat-vue/.vitepress/dist/
+
+# NestJS
+chat-back/node_modules/
+chat-back/dist/
+chat-back/.env
+chat-back/.env.local
+chat-back/.env.*.local

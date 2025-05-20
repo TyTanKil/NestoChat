@@ -63,6 +63,10 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ChatGateway.prototype, "handleMessage", null);
 exports.ChatGateway = ChatGateway = __decorate([
-    (0, websockets_1.WebSocketGateway)({ cors: true })
+    (0, websockets_1.WebSocketGateway)({ cors: {
+            origin: 'http://localhost:8080',
+            credentials: true,
+            methods: ['GET', 'POST'],
+        } })
 ], ChatGateway);
 //# sourceMappingURL=chat.gateway.js.map

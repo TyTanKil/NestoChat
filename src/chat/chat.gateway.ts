@@ -14,7 +14,11 @@ interface User {
   name: string;
 }
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({ cors: {
+    origin: 'http://localhost:8080',
+    credentials: true,
+    methods: ['GET', 'POST'],
+  } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
