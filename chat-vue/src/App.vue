@@ -40,7 +40,8 @@
             <div class="content">
               <span class="sender">{{ msg.sender }}</span>
               <span class="time">({{ formatTime(msg.timestamp) }})</span>
-              <div class="text">{{ msg.message }}</div>
+              <div class="text">{{ msg.content }}</div>
+              <button class="like-button" @click="likeMessage(msg.id)">❤️ {{ msg.likes ?? 0}}</button>
             </div>
           </li>
         </ul>
@@ -85,6 +86,7 @@ onMounted(() => {
   }
 
   socket.on('message', (data) => {
+    if (typeof data.likes !== 'number') data.likes = 0;
     messages.value.push(data);
   });
 
@@ -118,7 +120,7 @@ const sendMessage = () => {
   if (message.value.trim()) {
     socket.emit('message', {
       sender: username.value,
-      message: message.value,
+      content: message.value,
       timestamp: new Date().toISOString(),
     });
     message.value = '';
@@ -126,12 +128,28 @@ const sendMessage = () => {
 };
 
 const getAvatar = (name) => `https://api.dicebear.com/7.x/thumbs/svg?seed=${name}`;
-const formatTime = (iso) => new Date(iso).toLocaleTimeString();
+const formatTime = (iso) => {
+  const date = new Date(iso);
+  return isNaN(date) ? '' : date.toLocaleTimeString();
+};
 
 const updateThemeColor = () => {
   document.documentElement.style.setProperty('--theme-color', themeColor.value);
   localStorage.setItem('themeColor', themeColor.value);
 };
+
+const likeMessage = (messageId) => {
+  socket.emit('like', messageId);
+};
+
+socket.on('like', ({ messageId, likes }) => {
+  const msg = messages.value.find(m => m.id === messageId);
+  if (msg) {
+    msg.likes = likes;
+  }
+});
+
+
 </script>
 
 <style scoped>
@@ -183,6 +201,13 @@ const updateThemeColor = () => {
   font-size: 1rem;
   margin-bottom: 10px;
   text-align: center;
+}
+
+.like-button {
+  color: black;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .user-list {

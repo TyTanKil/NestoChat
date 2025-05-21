@@ -14,6 +14,13 @@ interface User {
   name: string;
 }
 
+interface ChatMessage {
+  id: string;
+  sender: string;
+  content: string;
+  likes: number;  
+}
+
 @WebSocketGateway({ cors: {
     origin: 'http://localhost:8080',
     credentials: true,
@@ -24,6 +31,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private users: User[] = [];
+  private messages: ChatMessage[] = [];
+  private messageLikes: Record<string, Set<string>> = {};
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -31,7 +40,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
-    // Retirer l'utilisateur déconnecté
     this.users = this.users.filter(user => user.id !== client.id);
     this.updateUserList();
   }
@@ -41,7 +49,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() name: string,
     @ConnectedSocket() client: Socket,
   ) {
-    // Vérifie si l'utilisateur est déjà enregistré
     const alreadyExists = this.users.find(user => user.id === client.id);
     if (!alreadyExists) {
       this.users.push({ id: client.id, name });
@@ -50,12 +57,46 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('message')
-  handleMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { sender: string; message: string; timestamp: string },
-  ) {
-    this.server.emit('message', payload);
+  handleMessage(@MessageBody() data: { sender: string; content: string }, @ConnectedSocket() client: Socket): void {
+    const newMessage = {
+      id: Date.now().toString() + Math.floor(Math.random() * 10000),
+      sender: data.sender,
+      content: data.content,
+      likes: 0,
+      timestamp: new Date().toISOString()
+    };
+    this.messages.push(newMessage);
+
+    this.server.emit('message', {
+      ...newMessage,
+      index: this.messages.length - 1
+    });
   }
+
+ @SubscribeMessage('like')
+    handleLike(
+    @MessageBody() messageId: string,
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const message = this.messages.find(m => m.id === messageId);
+    if (!message) return;
+
+    if (!this.messageLikes[messageId]) {
+      this.messageLikes[messageId] = new Set();
+    }
+
+    const alreadyLiked = this.messageLikes[messageId].has(client.id);
+    if (alreadyLiked) return;
+
+    this.messageLikes[messageId].add(client.id);
+    message.likes += 1;
+
+    this.server.emit('like', {
+      messageId,
+      likes: message.likes,
+    });
+  }
+
 
   private updateUserList() {
     const usernames = this.users.map(u => u.name);

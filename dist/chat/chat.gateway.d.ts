@@ -3,13 +3,15 @@ import { Server, Socket } from 'socket.io';
 export declare class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     server: Server;
     private users;
+    private messages;
+    private messageLikes;
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;
     handleRegister(name: string, client: Socket): void;
-    handleMessage(client: Socket, payload: {
+    handleMessage(data: {
         sender: string;
-        message: string;
-        timestamp: string;
-    }): void;
+        content: string;
+    }, client: Socket): void;
+    handleLike(messageId: string, client: Socket): void;
     private updateUserList;
 }

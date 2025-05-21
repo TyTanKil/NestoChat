@@ -18,6 +18,8 @@ const socket_io_1 = require("socket.io");
 let ChatGateway = class ChatGateway {
     server;
     users = [];
+    messages = [];
+    messageLikes = {};
     handleConnection(client) {
         console.log(`Client connected: ${client.id}`);
     }
@@ -33,8 +35,36 @@ let ChatGateway = class ChatGateway {
             this.updateUserList();
         }
     }
-    handleMessage(client, payload) {
-        this.server.emit('message', payload);
+    handleMessage(data, client) {
+        const newMessage = {
+            id: Date.now().toString() + Math.floor(Math.random() * 10000),
+            sender: data.sender,
+            content: data.content,
+            likes: 0,
+            timestamp: new Date().toISOString()
+        };
+        this.messages.push(newMessage);
+        this.server.emit('message', {
+            ...newMessage,
+            index: this.messages.length - 1
+        });
+    }
+    handleLike(messageId, client) {
+        const message = this.messages.find(m => m.id === messageId);
+        if (!message)
+            return;
+        if (!this.messageLikes[messageId]) {
+            this.messageLikes[messageId] = new Set();
+        }
+        const alreadyLiked = this.messageLikes[messageId].has(client.id);
+        if (alreadyLiked)
+            return;
+        this.messageLikes[messageId].add(client.id);
+        message.likes += 1;
+        this.server.emit('like', {
+            messageId,
+            likes: message.likes,
+        });
     }
     updateUserList() {
         const usernames = this.users.map(u => u.name);
@@ -56,12 +86,20 @@ __decorate([
 ], ChatGateway.prototype, "handleRegister", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('message'),
-    __param(0, (0, websockets_1.ConnectedSocket)()),
-    __param(1, (0, websockets_1.MessageBody)()),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", void 0)
 ], ChatGateway.prototype, "handleMessage", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('like'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], ChatGateway.prototype, "handleLike", null);
 exports.ChatGateway = ChatGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({ cors: {
             origin: 'http://localhost:8080',
