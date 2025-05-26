@@ -3,4 +3,4 @@ npm install \
 npm run start \
 cd chat-vue \
 npm install \
-npm run serve \
+npm run serve
