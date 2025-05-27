@@ -3,12 +3,14 @@
     <h1>💬 Chat Vue 3</h1>
 
     <!-- Formulaire d'authentification -->
-    <div v-if="!jwtToken" class="form">
+    <div v-if="!jwtToken" class="auth-form">
       <h3>{{ isLoginMode ? 'Connexion' : 'Inscription' }}</h3>
       <input v-model="tempUsername" type="text" placeholder="Nom d'utilisateur" />
       <input v-model="password" type="password" placeholder="Mot de passe" />
-      <button @click="handleAuth">{{ isLoginMode ? 'Se connecter' : 'S’inscrire' }}</button>
-      <p @click="isLoginMode = !isLoginMode" style="cursor: pointer;">
+      <button @click="handleAuth">
+        {{ isLoginMode ? 'Se connecter' : 'S’inscrire' }}
+      </button>
+      <p @click="isLoginMode = !isLoginMode" class="toggle-mode">
         {{ isLoginMode ? 'Pas de compte ? Inscris-toi' : 'Déjà inscrit ? Connecte-toi' }}
       </p>
     </div>
@@ -23,6 +25,7 @@
         <p>Connecté en tant que : <strong>{{ username }}</strong></p>
 
         <input
+          class="message-input"
           v-model="message"
           type="text"
           placeholder="Votre message 😊"
@@ -31,10 +34,12 @@
         <button @click="sendMessage">Envoyer</button>
 
         <ul class="messages">
-          <li v-for="(msg, index) in messages" :key="index">
+          <li v-for="(msg, index) in messages" :key="index" :style="{ borderLeft: '4px solid ' + (msg.color || '#0077cc') }">
             <img :src="getAvatar(msg.sender)" class="avatar" />
             <div class="content">
-              <span class="sender">{{ msg.sender }}</span>
+              <span class="sender" :style="{ color: msg.color || '#0077cc' }">
+                {{ msg.sender }}
+              </span>
               <span class="time">({{ formatTime(msg.timestamp) }})</span>
               <div class="text">{{ msg.content }}</div>
               <button class="like-button" @click="likeMessage(msg.id)">❤️ {{ msg.likes ?? 0}}</button>
@@ -43,6 +48,19 @@
         </ul>
 
         <button @click="resetUsername">Changer de pseudo</button>
+        <!-- Sélecteur de couleur -->
+        <div class="theme-switcher">
+          <span>🎨 Couleur du chat :</span>
+          <button @click="openColorPicker = !openColorPicker">
+            Choisir une couleur
+          </button>
+          <input
+            v-if="openColorPicker"
+            type="color"
+            v-model="themeColor"
+            @input="updateThemeColor"
+          />
+        </div>
       </div>
 
       <!-- Sidebar utilisateurs connectés -->
@@ -56,19 +74,7 @@
         </div>
       </div>
 
-      <!-- Sélecteur de couleur -->
-    <div class="theme-switcher">
-      <span>🎨 Couleur du chat :</span>
-      <button @click="openColorPicker = !openColorPicker">
-        Choisir une couleur
-      </button>
-      <input
-        v-if="openColorPicker"
-        type="color"
-        v-model="themeColor"
-        @input="updateThemeColor"
-      />
-    </div>
+      
 
     </div>
   </div>
@@ -77,6 +83,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { io } from 'socket.io-client';
+import { useToast } from 'vue-toast-notification';
 
 const socket = io('http://localhost:3000');
 
@@ -87,6 +94,7 @@ const messages = ref([]);
 const users = ref([]);
 const themeColor = ref(localStorage.getItem('themeColor') || '#0077cc');
 const openColorPicker = ref(false);
+const toast = useToast();
 
 onMounted(() => {
   const saved = sessionStorage.getItem('username');
@@ -135,6 +143,7 @@ const sendMessage = () => {
       sender: username.value,
       content: message.value,
       timestamp: new Date().toISOString(),
+      color: themeColor.value,
     });
     message.value = '';
   }
@@ -159,28 +168,35 @@ const password = ref('');
 const handleAuth = async () => {
   const endpoint = isLoginMode.value ? 'login' : 'register';
   const url = `http://localhost:3000/auth/${endpoint}`;
-  const res = await fetch(url, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ username: tempUsername.value, password: password.value })
-});
 
-  const data = await res.json();
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: tempUsername.value,
+        password: password.value
+      })
+    });
 
-  if (!res.ok) {
-    alert(data.message || 'Erreur');
-    return;
-  }
+    const data = await res.json();
 
-  if (data.access_token) {
-    jwtToken.value = data.access_token;
-    localStorage.setItem('token', jwtToken.value);
-    username.value = tempUsername.value;
-    sessionStorage.setItem('username', username.value);
-    socket.emit('register', username.value);
-  } else {
-    alert(data.message || 'Compte créé. Connecte-toi.');
-    isLoginMode.value = true;
+    if (!res.ok) {
+      throw new Error(data.message || 'Une erreur est survenue');
+    }
+
+    if (isLoginMode.value) {
+      jwtToken.value = data.access_token;
+      toast.success('Connexion réussie');
+    } else {
+      toast.success('Inscription réussie ! Vous pouvez maintenant vous connecter');
+      isLoginMode.value = true;
+    }
+
+    tempUsername.value = '';
+    password.value = '';
+  } catch (err) {
+    toast.error(err.message);
   }
 };
 
@@ -202,6 +218,10 @@ socket.on('like', ({ messageId, likes }) => {
 <style scoped>
 :root {
   --theme-color: #0077cc;
+}
+
+body {
+  background-color: #f0f2f5;
 }
 
 .container {
@@ -251,10 +271,16 @@ socket.on('like', ({ messageId, likes }) => {
 }
 
 .like-button {
+  background: transparent;
   color: black;
-  background-color: transparent;
   border: none;
   cursor: pointer;
+  font-size: 1.1rem;
+  transition: transform 0.1s ease;
+}
+
+.like-button:hover {
+  transform: scale(1.2);
 }
 
 .user-list {
@@ -285,11 +311,19 @@ socket.on('like', ({ messageId, likes }) => {
 }
 
 input[type="text"] {
-  width: 100%;
-  padding: 10px;
+  width: 90%;
+  padding: 12px 14px;
   margin-top: 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #ccc;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--theme-color);
+  box-shadow: 0 0 0 2px rgba(0, 119, 204, 0.2);
 }
 
 button {
@@ -298,8 +332,14 @@ button {
   background-color: var(--theme-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+button:hover {
+  background-color: #005fa3;
+  transform: translateY(-1px);
 }
 
 .messages {
@@ -311,9 +351,12 @@ button {
 }
 
 .messages li {
-  display: flex;
-  align-items: flex-start;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
   margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  display: flex;
 }
 
 .avatar {
@@ -372,5 +415,59 @@ button {
     width: 100%;
     position: static;
   }
+}
+
+.auth-form {
+  max-width: 400px;
+  margin: 80px auto;
+  padding: 30px;
+  background: #112434;
+  color: #d5dbe1;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  font-family: 'Segoe UI', sans-serif;
+  text-align: center;
+}
+
+.auth-form h3 {
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.auth-form input {
+  width: 90%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.auth-form input::placeholder {
+  color: #999;
+}
+
+.auth-form button {
+  width: 100%;
+  padding: 12px;
+  background-color: #5a8ea4;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.auth-form button:hover {
+  background-color: #3c6c81;
+}
+
+.toggle-mode {
+  margin-top: 15px;
+  cursor: pointer;
+  color: #d5dbe1;
+  text-decoration: underline;
+  font-size: 14px;
 }
 </style>
