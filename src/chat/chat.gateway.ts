@@ -57,11 +57,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('message')
-  handleMessage(@MessageBody() data: { sender: string; content: string }, @ConnectedSocket() client: Socket): void {
+  handleMessage(@MessageBody() data: { sender: string; content: string; color?: string }, @ConnectedSocket() client: Socket): void {
     const newMessage = {
       id: Date.now().toString() + Math.floor(Math.random() * 10000),
       sender: data.sender,
       content: data.content,
+      color: data.color || '#0077cc',
       likes: 0,
       timestamp: new Date().toISOString()
     };
