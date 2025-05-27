@@ -19,7 +19,11 @@ On peut ensuite se connecter ou s'enregistrer (des pop-up s'affichent pour valid
 L'authentification fonctionne via un système de TokenJWT et les users sont enregistrés dans une base Prisma \
 \
 Le token étant persistant tant que l'application tourne, il est donc possible de se connecter avec deux utilisateurs maximum par navigateur (un user + un autre dans une fenêtre de navigation privée) \
+\
 Si besoin, il est toujours possible d'utiliser plusieurs navigateurs différents afin de contourner cette règle \
+Dans le cas contraire, si l'on actualise (F5), l'application conservera l'authentification et demandera juste d'inscrire un nouveau pseudo \
+Les pseudo sont non persistants et peuvent être modifiés à tout moment \
+\
 Enfin, même si l'on coupe le back et qu'on le relance, à moins de modifier à nouveau la DB prisma, les user crées restent disponibles ! \
 \
 A savoir : En cas de problèmes potentiels liés à des dépendances ne pas hésiter à utiliser les commandes liées à ces dernières : \
